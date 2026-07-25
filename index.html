@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>退休森林工作站</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!-- React（單檔案架構：React + Babel standalone，不需要建置工具）-->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<style>
+  :root {
+    --bg: #F4EFE1; --paper: #FBF8F0; --forest-deep: #1F3D2B; --forest-mid: #35563F;
+    --leaf: #5C8A5A; --wood: #8B5E34; --gold: #C89B3C; --alert: #B3462C;
+    --ink: #2A2119; --ink-soft: #6B5D4F;
+    font-family: 'Noto Sans TC', sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); }
+  #root { max-width: 480px; margin: 0 auto; padding-bottom: 40px; }
+  h1 { font-family: 'Noto Serif TC', serif; }
+  .topbar { background: var(--forest-deep); color: #EFE8D6; padding: 18px 18px 22px; margin: 0 0 18px; border-radius: 0 0 18px 18px; }
+  .topbar .eyebrow { font-size: 12px; letter-spacing: 2px; opacity: .7; text-transform: uppercase; }
+  .topbar h1 { font-size: 22px; margin: 4px 0 0; font-weight: 700; }
+  .content { padding: 0 18px; }
+  .card { background: var(--paper); border: 1px solid #E3D9C2; border-radius: 14px; padding: 16px; margin: 12px 0; box-shadow: 0 1px 0 #fff inset, 0 2px 6px rgba(74,50,32,.06); }
+  .card.clickable { cursor: pointer; }
+  .card.clickable:active { background: #F1EADA; }
+  .card.wood { background: var(--wood); color: #FBF3E4; border: none; }
+  .card.wood .label { color: #EAD9BE; }
+  .label { font-size: 12px; color: var(--ink-soft); letter-spacing: .5px; }
+  .section-title { font-family: 'Noto Serif TC', serif; font-size: 15px; font-weight: 700; margin: 22px 0 8px; color: var(--forest-deep); }
+  .btn { display: block; width: 100%; padding: 14px; font-size: 15px; font-weight: 500; margin: 10px 0; border: none; border-radius: 10px; background: var(--forest-deep); color: #fff; text-align: center; cursor: pointer; }
+  .btn.outline { background: transparent; color: var(--forest-deep); border: 1.5px solid var(--forest-deep); }
+  .btn.ghost { background: none; border: none; color: var(--ink-soft); text-decoration: underline; padding: 6px; font-size: 13px; width: auto; }
+  .ring-wrap { display: flex; align-items: center; gap: 16px; }
+  .ring-num { font-family: 'Noto Serif TC', serif; font-size: 30px; font-weight: 900; fill: #fff; }
+  .ring-track { fill: none; stroke: rgba(255,255,255,.18); stroke-width: 12; }
+  .ring-progress { fill: none; stroke: var(--gold); stroke-width: 12; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  .issue-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px dashed #E3D9C2; }
+  .issue-row:last-child { border-bottom: none; }
+  .issue-num { font-family: 'Noto Serif TC', serif; font-weight: 900; font-size: 16px; color: var(--alert); flex-shrink: 0; }
+  .issue-title { font-size: 15px; font-weight: 700; }
+  .signal-badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .sig-green { background: #E4EFDE; color: #3D6B39; }
+  .sig-amber { background: #FBEFD4; color: #91661C; }
+  .sig-blue  { background: #E3EEF5; color: #2C5F82; }
+  .sig-red   { background: #F6E2DC; color: var(--alert); }
+  .factor-row { display: flex; justify-content: space-between; font-size: 13px; padding: 7px 0; border-bottom: 1px dashed #E3D9C2; }
+  .factor-row:last-child { border-bottom: none; }
+  .chain { font-size: 14px; line-height: 2; }
+  .chain b { color: var(--forest-deep); }
+  .dev { background: #FFF7DC; border: 1px dashed #C9A85A; border-radius: 10px; padding: 8px 10px; margin: 10px 18px 0; font-size: 11px; color: #7A5B1E; }
+  .dev .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .dev button { padding: 7px; font-size: 12px; border: 1px solid #C9A85A; background: #fff; border-radius: 6px; }
+  .dev button.on { background: #C9A85A; color: #fff; }
+  .area-block { margin: 16px 0; }
+  .area-header { font-family: 'Noto Serif TC', serif; font-weight: 700; font-size: 14px; color: var(--forest-deep); margin-bottom: 8px; }
+  .tile-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--paper); border: 1px solid #E3D9C2; border-radius: 10px; padding: 10px 4px; text-align: center; font-size: 12px; cursor: pointer; }
+  .tile .sig { font-size: 16px; }
+  .loading { padding: 60px 18px; text-align: center; color: var(--ink-soft); }
+  .sigmap-green{color:#3D6B39}.sigmap-amber{color:#91661C}.sigmap-blue{color:#2C5F82}.sigmap-red{color:var(--alert)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState } = React;
+
+const BADGE_OF = { '🟢': 'sig-green', '🟡': 'sig-amber', '🔵': 'sig-blue', '🔴': 'sig-red' };
+const SIGNAL_LABEL = { '🟢': '優先灌溉', '🟡': '分批灌溉', '🔵': '持續觀察', '🔴': '暫緩投入' };
+
+function TopBar({ eyebrow, title, children }) {
+  return <div className="topbar"><div className="eyebrow">{eyebrow}</div><h1>{title}</h1>{children}</div>;
+}
+
+function HealthRing({ score }) {
+  const r = 36, circ = 2 * Math.PI * r, offset = circ * (1 - score / 100);
+  return (
+    <svg width="88" height="88" viewBox="0 0 88 88">
+      <circle className="ring-track" cx="44" cy="44" r={r} />
+      <circle className="ring-progress" cx="44" cy="44" r={r} strokeDasharray={circ} strokeDashoffset={offset} />
+      <text x="44" y="44" textAnchor="middle" dominantBaseline="central" className="ring-num">{score}</text>
+    </svg>
+  );
+}
+
+function ScenarioDevBar({ scenario, setScenario }) {
+  return (
+    <div className="dev">
+      測試情境（森林 DNA 不變，市場機會由 Engine 依假資料重新算）
+      <div className="row">
+        {['A', 'B', 'C'].map(s => (
+          <button key={s} className={scenario === s ? 'on' : ''} onClick={() => setScenario(s)}>
+            {s === 'A' ? 'A 無機會' : s === 'B' ? 'B 一棵樹' : 'C 多棵樹'}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HomeScreen({ today, confirmed, onOpenTree, onFinish, onGoMap }) {
+  const [showReasons, setShowReasons] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
+  const opp = today.opportunity;
+  const guide = today.guide;
+
+  return (
+    <div>
+      <TopBar eyebrow="今日森林" title="森林嚮導">
+        <div className="ring-wrap" style={{ marginTop: 14 }}>
+          <HealthRing score={today.health} />
+          <div>
+            <div className="label" style={{ color: '#CFE0CF' }}>今天森林狀況</div>
+            <div style={{ fontSize: 14, color: '#EFE8D6', marginTop: 4, lineHeight: 1.6 }}>{guide.healthSummary}</div>
+          </div>
+        </div>
+      </TopBar>
+
+      <div className="content">
+        {/* Layer 1：一句結論 */}
+        <div className="card wood">
+          <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.7 }}>{guide.conclusion}</div>
+        </div>
+
+        {/* Layer 2：點一下展開，3~5 個支持結論的理由 */}
+        <button className="btn ghost" onClick={() => setShowReasons(!showReasons)}>
+          {showReasons ? '收起理由 ▲' : '為什麼？ ▼'}
+        </button>
+        {showReasons && (
+          <div className="card">
+            {guide.reasons.map((r, i) => <div key={i} style={{ margin: '6px 0' }}>✓ {r}</div>)}
+          </div>
+        )}
+
+        {/* Layer 3：AI 的推理過程 */}
+        <button className="btn ghost" onClick={() => setShowReasoning(!showReasoning)}>
+          {showReasoning ? '收起 AI 的推理 ▲' : 'AI 是怎麼想的？ ▼'}
+        </button>
+        {showReasoning && (
+          <div className="card">
+            <div style={{ fontSize: 14, lineHeight: 1.9 }}>{guide.reasoningTrace}</div>
+          </div>
+        )}
+
+        {opp.verdict && today.candidates.length > 0 && (
+          <React.Fragment>
+            <div className="section-title">{today.candidates.length > 1 ? '今天可以照顧的樹' : '今天的樹'}</div>
+            {today.candidates.map(c => {
+              const isDone = confirmed.includes(c.name);
+              return (
+                <div key={c.name} className={'card ' + (isDone ? '' : 'clickable')} style={isDone ? { opacity: .45 } : {}}
+                  onClick={() => !isDone && onOpenTree(c.name)}>
+                  <span className={'signal-badge ' + BADGE_OF[c.signal]}>{isDone ? '✅ 已照顧' : c.signal}</span>
+                  <div style={{ marginTop: 8, fontWeight: 700 }}>{c.name}　建議投入 {c.amount}萬</div>
+                </div>
+              );
+            })}
+            {confirmed.length > 0 && <button className="btn" onClick={onFinish}>完成本次巡林</button>}
+          </React.Fragment>
+        )}
+
+        <button className="btn outline" onClick={onGoMap}>🗺 到森林走走</button>
+      </div>
+    </div>
+  );
+}
+
+function MapScreen({ today, onOpenTree, onBack }) {
+  const AREA_ORDER = ['果樹園', '神木林', '巨木林', 'AI灌木', '多元灌木', '新主題灌木', '苗圃'];
+  const AREA_ICON = { 果樹園: '🍎', 神木林: '🌲', 巨木林: '🌳', AI灌木: '🌿', 多元灌木: '🌿', 新主題灌木: '🌿', 苗圃: '🌱' };
+  return (
+    <div>
+      <TopBar eyebrow="自由巡林" title="森林地圖" />
+      <div className="content">
+        <div className="label">依林區分組，點一棵樹聽聽森林嚮導怎麼說</div>
+        {AREA_ORDER.map(area => (
+          <div className="area-block" key={area}>
+            <div className="area-header">{AREA_ICON[area]} {area}</div>
+            <div className="tile-grid">
+              {today.trees.filter(t => t.area === area).map(t => {
+                const sig = t.species === '苗圃' ? '🌱' : (today.allSignals[t.name]?.signal || '🔵');
+                return (
+                  <div className="tile" key={t.name} onClick={() => t.species !== '苗圃' && onOpenTree(t.name)}>
+                    <div className="sig">{sig}</div>{t.name}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <button className="btn outline" onClick={onBack}>← 返回首頁</button>
+      </div>
+    </div>
+  );
+}
+
+function DecisionScreen({ today, treeName, onConfirm, onBack }) {
+  const [showReasons, setShowReasons] = useState(false);
+  const found = today.candidates.find(c => c.name === treeName)
+    || today.notRecommended.find(n => n.name === treeName)
+    || today.allSignals[treeName];
+  const amount = found && found.amount;
+  const narrative = today.guide.trees[treeName] || '目前還沒有足夠的資料可以判斷這棵樹。';
+  const signal = found ? found.signal : '🔵';
+
+  return (
+    <div>
+      <TopBar eyebrow="森林嚮導" title={treeName} />
+      <div className="content">
+        <div className="card">
+          <span className={'signal-badge ' + BADGE_OF[signal]}>{signal}</span>
+          <div style={{ fontSize: 16, marginTop: 14, lineHeight: 1.8 }}>{narrative}</div>
+        </div>
+
+        {found && found.reasons && (
+          <React.Fragment>
+            <button className="btn ghost" onClick={() => setShowReasons(!showReasons)}>
+              {showReasons ? '收起細節 ▲' : '詳細一點 ▼'}
+            </button>
+            {showReasons && (
+              <div className="card">
+                {found.reasons.map((r, i) => <div key={i} style={{ margin: '6px 0' }}>✓ {r}</div>)}
+              </div>
+            )}
+          </React.Fragment>
+        )}
+
+        {amount ? (
+          <div className="card wood">
+            <div className="label">建議投入</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{amount} 萬</div>
+          </div>
+        ) : null}
+        {amount ? <button className="btn" onClick={() => onConfirm(treeName, amount)}>確認照顧這棵樹</button> : null}
+        <button className="btn ghost" onClick={onBack}>← 返回首頁</button>
+      </div>
+    </div>
+  );
+}
+
+function DoneScreen({ summaryLines, onRestart }) {
+  return (
+    <div>
+      <TopBar eyebrow="Irrigation Engine" title="森林已更新" />
+      <div className="content">
+        <div className="card">
+          {summaryLines.map((l, i) => <div key={i}>{l}</div>)}
+          <div className="label" style={{ marginTop: 8 }}>已經幫你記錄在森林日誌裡了。</div>
+        </div>
+        <button className="btn" onClick={onRestart}>回到首頁，明天再巡林</button>
+      </div>
+    </div>
+  );
+}
+
+function App({ useForestDecision }) {
+  const [scenario, setScenario] = useState('A');
+  const [screen, setScreen] = useState('home');
+  const [confirmed, setConfirmed] = useState([]);
+  const [currentTree, setCurrentTree] = useState(null);
+  const [doneSummary, setDoneSummary] = useState([]);
+  const { today, loading } = useForestDecision(scenario);
+
+  function changeScenario(s) { setScenario(s); setConfirmed([]); setScreen('home'); }
+  function openTree(name) { setCurrentTree(name); setScreen('decision'); }
+
+  function confirmTree(name, amount) {
+    const next = confirmed.includes(name) ? confirmed : [...confirmed, name];
+    setConfirmed(next);
+    if (today.candidates.length === 1) {
+      setDoneSummary([`✅ 已經照顧了 ${name}，投入 ${amount}萬`]);
+      setScreen('done');
+    } else {
+      setScreen('home');
+    }
+  }
+
+  function finishScenario() {
+    const lines = confirmed.map(n => {
+      const c = today.candidates.find(x => x.name === n);
+      return `✅ 已經照顧了 ${n}，投入 ${c ? c.amount : ''}萬`;
+    });
+    setDoneSummary(lines);
+    setScreen('done');
+  }
+
+  return (
+    <div>
+      <ScenarioDevBar scenario={scenario} setScenario={changeScenario} />
+      {loading || !today ? (
+        <div className="loading">Engine 正在計算今日森林判斷…</div>
+      ) : (
+        <React.Fragment>
+          {screen === 'home' && <HomeScreen today={today} confirmed={confirmed} onOpenTree={openTree} onFinish={finishScenario} onGoMap={() => setScreen('map')} />}
+          {screen === 'map' && <MapScreen today={today} onOpenTree={openTree} onBack={() => setScreen('home')} />}
+          {screen === 'decision' && <DecisionScreen today={today} treeName={currentTree} onConfirm={confirmTree} onBack={() => setScreen('home')} />}
+          {screen === 'done' && <DoneScreen summaryLines={doneSummary} onRestart={() => changeScenario(scenario)} />}
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+
+(async () => {
+  const { useForestDecision } = await import('./hooks/useForestDecision.js');
+  ReactDOM.createRoot(document.getElementById('root')).render(<App useForestDecision={useForestDecision} />);
+})();
+</script>
+</body>
+</html>
