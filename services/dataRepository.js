@@ -22,7 +22,7 @@
  */
 
 import { marketDataProvider } from './dataProviders/market/index.js';
-import { normalizeMarketData } from './dataProviders/normalize.js';
+import { normalizeMarketData, calculateCompleteness } from './dataProviders/normalize.js';
 
 // ---- 人生目標（LifeGoal）----
 export async function getLifeGoal() {
@@ -68,32 +68,35 @@ export async function getWaterPool() {
 // ⚠️ 代號正確性：以下已用網路搜尋逐一查證交易所別（上市/上櫃），但建議
 // 你自己在 Google/Yahoo股市 上再核對一次數字本身，畢竟這攸關抓到的是
 // 不是同一家公司的資料，錯了不會報錯、只會默默抓到別家公司或抓不到。
+// instrumentType：'stock'（個股）或 'etf'。這是「這棵樹是什麼」的本質，
+// 不是市場報價，所以放在這裡（跟 species 一樣屬於持股資料），不是
+// Provider 該知道的事。normalize.js 會依這個欄位決定用哪套完整度標準。
 const TREE_ROSTER = [
-  { symbol: '0050.TW', name: '0050', area: '果樹園', species: '神木果樹', marketValue: 452 },
-  { symbol: '0056.TW', name: '0056', area: '果樹園', species: '成熟果樹', marketValue: 81 },
-  { symbol: '00850.TW', name: '00850', area: '果樹園', species: '成熟果樹', marketValue: 42 },
-  { symbol: '2707.TW', name: '晶華', area: '果樹園', species: '成熟果樹', marketValue: 53 },
-  { symbol: '2881.TW', name: '富邦金', area: '果樹園', species: '成熟果樹', marketValue: 13 },
-  { symbol: '2884.TW', name: '玉山金', area: '果樹園', species: '成熟果樹', marketValue: 11 },
-  { symbol: '2330.TW', name: '台積電', area: '神木林', species: '神木', marketValue: 1230 },
-  { symbol: 'GOOGL', name: 'Google', area: '神木林', species: '神木', marketValue: 19 },
-  { symbol: 'NVDA', name: 'NVDA', area: '神木林', species: '神木', marketValue: 50 },
-  { symbol: 'QQQM', name: 'QQQM', area: '神木林', species: '神木', marketValue: 22 },
-  { symbol: '2308.TW', name: '台達電', area: '巨木林', species: '巨木', marketValue: 174 },
-  { symbol: '2345.TW', name: '智邦', area: '巨木林', species: '巨木', marketValue: 1463 },
-  { symbol: '2317.TW', name: '鴻海', area: '巨木林', species: '巨木', marketValue: 54 },
-  { symbol: '2395.TW', name: '研華', area: '巨木林', species: '巨木', marketValue: 62 },
-  { symbol: '00830.TW', name: '00830', area: 'AI灌木', species: '灌木', marketValue: 124 },
-  { symbol: '0052.TW', name: '0052', area: 'AI灌木', species: '灌木', marketValue: 23 },
-  { symbol: '3374.TWO', name: '精材', area: 'AI灌木', species: '灌木', marketValue: 25 }, // 已查證：上櫃
-  { symbol: '3231.TW', name: '緯創', area: 'AI灌木', species: '灌木', marketValue: 14 },
-  { symbol: '4952.TW', name: '凌通', area: '多元灌木', species: '灌木', marketValue: 72 }, // 已查證：上市（不是上櫃）
-  { symbol: '9945.TW', name: '潤泰新', area: '多元灌木', species: '灌木', marketValue: 62 },
-  { symbol: '1722.TW', name: '台肥', area: '多元灌木', species: '灌木', marketValue: 18 },
-  { symbol: '009819.TW', name: '009819', area: '新主題灌木', species: '灌木', marketValue: 29 },
-  { symbol: 'IBIT', name: 'IBIT', area: '新主題灌木', species: '灌木', marketValue: 0.9 },
-  { symbol: '2049.TW', name: '上銀', area: '新主題灌木', species: '灌木', marketValue: 1 },
-  { symbol: '6208.TWO', name: '日揚', area: '苗圃', species: '苗圃', marketValue: 17 } // 已查證：代號是6208不是6754，且為上櫃
+  { symbol: '0050.TW', name: '0050', area: '果樹園', species: '神木果樹', instrumentType: 'etf', marketValue: 452 },
+  { symbol: '0056.TW', name: '0056', area: '果樹園', species: '成熟果樹', instrumentType: 'etf', marketValue: 81 },
+  { symbol: '00850.TW', name: '00850', area: '果樹園', species: '成熟果樹', instrumentType: 'etf', marketValue: 42 },
+  { symbol: '2707.TW', name: '晶華', area: '果樹園', species: '成熟果樹', instrumentType: 'stock', marketValue: 53 },
+  { symbol: '2881.TW', name: '富邦金', area: '果樹園', species: '成熟果樹', instrumentType: 'stock', marketValue: 13 },
+  { symbol: '2884.TW', name: '玉山金', area: '果樹園', species: '成熟果樹', instrumentType: 'stock', marketValue: 11 },
+  { symbol: '2330.TW', name: '台積電', area: '神木林', species: '神木', instrumentType: 'stock', marketValue: 1230 },
+  { symbol: 'GOOGL', name: 'Google', area: '神木林', species: '神木', instrumentType: 'stock', marketValue: 19 },
+  { symbol: 'NVDA', name: 'NVDA', area: '神木林', species: '神木', instrumentType: 'stock', marketValue: 50 },
+  { symbol: 'QQQM', name: 'QQQM', area: '神木林', species: '神木', instrumentType: 'etf', marketValue: 22 },
+  { symbol: '2308.TW', name: '台達電', area: '巨木林', species: '巨木', instrumentType: 'stock', marketValue: 174 },
+  { symbol: '2345.TW', name: '智邦', area: '巨木林', species: '巨木', instrumentType: 'stock', marketValue: 1463 },
+  { symbol: '2317.TW', name: '鴻海', area: '巨木林', species: '巨木', instrumentType: 'stock', marketValue: 54 },
+  { symbol: '2395.TW', name: '研華', area: '巨木林', species: '巨木', instrumentType: 'stock', marketValue: 62 },
+  { symbol: '00830.TW', name: '00830', area: 'AI灌木', species: '灌木', instrumentType: 'etf', marketValue: 124 },
+  { symbol: '0052.TW', name: '0052', area: 'AI灌木', species: '灌木', instrumentType: 'etf', marketValue: 23 },
+  { symbol: '3374.TWO', name: '精材', area: 'AI灌木', species: '灌木', instrumentType: 'stock', marketValue: 25 },
+  { symbol: '3231.TW', name: '緯創', area: 'AI灌木', species: '灌木', instrumentType: 'stock', marketValue: 14 },
+  { symbol: '4952.TW', name: '凌通', area: '多元灌木', species: '灌木', instrumentType: 'stock', marketValue: 72 },
+  { symbol: '9945.TW', name: '潤泰新', area: '多元灌木', species: '灌木', instrumentType: 'stock', marketValue: 62 },
+  { symbol: '1722.TW', name: '台肥', area: '多元灌木', species: '灌木', instrumentType: 'stock', marketValue: 18 },
+  { symbol: '009819.TW', name: '009819', area: '新主題灌木', species: '灌木', instrumentType: 'etf', marketValue: 29 },
+  { symbol: 'IBIT', name: 'IBIT', area: '新主題灌木', species: '灌木', instrumentType: 'etf', marketValue: 0.9 },
+  { symbol: '2049.TW', name: '上銀', area: '新主題灌木', species: '灌木', instrumentType: 'stock', marketValue: 1 },
+  { symbol: '6208.TWO', name: '日揚', area: '苗圃', species: '苗圃', instrumentType: 'stock', marketValue: 17 }
 ];
 
 export async function getTrees(scenario = 'A') {
@@ -107,13 +110,16 @@ export async function getTrees(scenario = 'A') {
 
   return TREE_ROSTER.map(t => {
     const marketData = marketDataMap[t.symbol];
-    return {
-      ...t,
-      // Provider 已經負責翻譯（見 normalizeMarketData），這裡只是取用；
-      // 查無資料時用同一個函式產生空殼形狀，Decision Engine 不用另外判斷 undefined。
-      fundamentals: marketData?.fundamentals || normalizeMarketData(null),
-      marketData // 完整原始報價，供未來擴充用（例如還沒用到的 marketCap／analystRating）
-    };
+    // Provider 已經負責翻譯（見 normalizeMarketData），這裡只是取用；
+    // 查無資料時用同一個函式產生空殼形狀，Decision Engine 不用另外判斷 undefined。
+    const fundamentals = marketData?.fundamentals || normalizeMarketData(null);
+
+    // completeness 要看 instrumentType 才知道該用哪套標準（個股 vs ETF），
+    // 這個資訊只有 Data Repository 知道（TREE_ROSTER 的一部分），
+    // Provider 回傳時給的是保守預設值，這裡用正確的標準覆寫一次。
+    fundamentals.completeness = calculateCompleteness(marketData, t.instrumentType);
+
+    return { ...t, fundamentals, marketData };
   });
 }
 

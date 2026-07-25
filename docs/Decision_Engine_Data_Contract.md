@@ -1,4 +1,4 @@
-# Decision Engine Data Contract v1.2
+# Decision Engine Data Contract v1.3
 
 > 版本常數：`DATA_CONTRACT_VERSION`，定義在 `services/dataProviders/normalize.js`。
 > Engine 或 UI 需要判斷「現在系統用哪一版契約」時，讀這個常數，不要寫死字串。
@@ -9,7 +9,8 @@
 |---|---|
 | v1.0 | 初版：定義必填/可選欄位，Provider 直接回傳扁平形狀（`tree.fundamentals.peRatio`） |
 | v1.1 | **重大改版**：加入正規化階層（`valuation` / `quality` / `risk` / `scores`），Decision Engine 從此不再直接讀任何第三方 API 欄位名稱；新增 `scores` 區塊，讓 Provider 可以直接提供複合分數（qualityScore / valuationScore / riskScore） |
-| v1.2 | 新增 `fundamentals.completeness`（0~100，取代原本二選一的「有沒有資料」），Decision Engine 的資料完整度護欄改成依 completeness 分級（100/84/69三段）決定分數上限，而不是只有「有/沒有」兩種狀態；`normalize.js` 也新增 `mergeMarketData()`，為未來多資料源合併預留位置（目前只有一個來源時是 pass-through） |
+| v1.2 | 新增 `fundamentals.completeness`（0~100，取代原本二選一的「有沒有資料」），Decision Engine 的資料完整度護欄改成依 completeness 分級決定分數上限 |
+| v1.3 | 修正 `dividendYield` 從未被正規化的遺漏（新增到 `quality.dividendYield`）；completeness 改成依 `instrumentType`（個股/ETF）採用不同必要欄位，ETF 不再被要求本益比這種不適用的指標；`confidenceCap` 簡化回二段式（70% 門檻，過了不設限／沒過封頂69），拿掉會讓「文字說不推薦、畫面卻在推薦」互相矛盾的中間地帶 |
 
 > ⚠️ 這次改版本身也是個提醒：v1.2 的程式碼已經上線一段時間，但這份文件在被回頭檢查前一直停在 v1.1——版本號要跟著程式碼一起改，不是事後才補，不然 Data Contract 就失去「AI 判斷現在用哪一版」的意義了。
 
@@ -79,9 +80,15 @@ peAvg5y…）算出這個分數，再依三段門檻決定這棵樹今天分數�
 
 | completeness | 分數上限 | 意義 |
 |---|---|---|
-| ≥ 70 | 不設限 | 六個關鍵欄位（pe/peAvg5y/pb/dividendStreak/revenueGrowth/analystRating）大部分齊全，AI 有足夠資訊做判斷 |
-| 40 ~ 69 | 封頂 84（最高只能到🟡） | 資料部分齊全，先別放到最高的🟢 |
-| < 40 | 封頂 69（最高只能到🔵） | 資料明顯不足，僅列入觀察 |
+| ≥ 70 | 不設限 | 關鍵欄位大部分齊全，AI 有足夠資訊主動推薦 |
+| < 70 | 封頂 69（最高只能到🔵） | 資料不足以支持主動推薦，僅列入觀察——不會有中間地帶，避免文字說「不推薦」但畫面卻顯示金額跟確認按鈕這種矛盾 |
+
+必要欄位依 `instrumentType` 不同（v1.3 新增）：
+
+| instrumentType | 必要欄位 | 原因 |
+|---|---|---|
+| `stock`（個股） | peRatio、pbRatio、revenueGrowthYoY、analystRating | 公司財務指標 |
+| `etf` | dividendYield | ETF 沒有標準的本益比定義，該看的是殖利率——這對果樹類 ETF（0050/0056/00850）尤其重要，退休森林本來就是靠這些 ETF 的殖利率提供現金流 |
 
 之後如果決定「沒有 `revenueGrowthYoY` 或 `analystRating` 也該扣分」，只需要在
 `normalize.js` 的 completeness 計算邏輯裡多加一個欄位權重，不需要動 Decision Engine、

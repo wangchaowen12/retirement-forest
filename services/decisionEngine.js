@@ -46,6 +46,16 @@ function calculateValuationScore(tree) {
     const ratio = valuation.pe / valuation.peAvg5y;
     return Math.round(clamp((1 - ratio) * 60, -20, 20));
   }
+
+  // 沒有歷史本益比可比較時（尤其 ETF，本來就沒有標準本益比），
+  // 退回用殖利率判斷——這對果樹類資產（0050/0056/00850）特別重要，
+  // 退休森林本來就是靠這些殖利率提供現金流，不是靠本益比。
+  // 3% 當作中性基準，越高越好、越低扣分越多。
+  const dividendYield = tree.fundamentals?.quality?.dividendYield;
+  if (typeof dividendYield === 'number') {
+    return Math.round(clamp((dividendYield - 0.03) * 500, -15, 15));
+  }
+
   const streak = tree.fundamentals?.quality?.dividendStreakYears;
   if (typeof streak === 'number') return streak >= 5 ? 10 : 0;
   return 0;
@@ -112,10 +122,12 @@ function calculateDecisionScore(tree, intelligence, opportunity) {
 // 也不該被動地推上🟢——用分級取代原本「有資料/沒資料」的二分法，
 // 但護欄背後的精神完全沒變。這幾個門檻是唯一跟 completeness 掛勾的
 // 地方，之後不管資料源是 Yahoo 還是 Finnhub，這裡都不用改。
+// 資料完整度護欄：只有兩種狀態，不要有「文字說不推薦、畫面卻在推薦」
+// 這種中間地帶。完整度沒到門檻，就是「僅列入觀察」，不會變成候選、
+// 不會有金額、不會有確認按鈕——講出來的話跟畫面顯示的結果要一致。
 function confidenceCap(confidence) {
   if (confidence >= 70) return 100; // 資料足夠完整，不額外設限
-  if (confidence >= 40) return 84;  // 資料部分齊全，先別放到最高的🟢
-  return 69;                        // 資料明顯不足，僅列入觀察
+  return 69;                        // 資料不足以支持主動推薦，僅列入觀察
 }
 
 function evaluateTree(tree, intelligence, opportunity) {

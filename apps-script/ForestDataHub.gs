@@ -48,7 +48,13 @@ function doGet(e) {
       if (fundamentals) {
         data.peRatio = data.peRatio ?? fundamentals.peRatio ?? null;
         data.pbRatio = data.pbRatio ?? fundamentals.pbRatio ?? null;
-        data.dividendYield = data.dividendYield ?? fundamentals.dividendYield ?? null;
+        // ⚠️ 單位不一致：證交所/櫃買中心的 DividendYield 是「百分比數字」
+        // （0.94 代表 0.94%），Yahoo 的 dividendYield 是「小數」
+        // （0.025 代表 2.5%）。這裡統一轉成小數，跟 Yahoo 的格式一致，
+        // 不然殖利率評分算出來會離譜（0.94 當小數用等於 94%）。
+        if (data.dividendYield == null && fundamentals.dividendYield != null) {
+          data.dividendYield = fundamentals.dividendYield / 100;
+        }
       }
     }
     return jsonResponse_(data);
