@@ -38,14 +38,28 @@ export const DATA_CONTRACT_VERSION = '1.3';
 // ETF：這些公司財務指標大多沒有意義（ETF 是一籃子持股，沒有單一
 // 「本益比」的標準定義），改成看殖利率——這對果樹類 ETF（0050/0056/
 // 00850）尤其重要，退休森林本來就是靠這些 ETF 的殖利率提供現金流。
+// 這裡的原則是：只要求「目前真的穩定抓得到」的欄位，不要求「理論上
+// 重要但目前抓不到」的欄位——不然 completeness 只是在懲罰資料源的
+// 限制，不是真的在反映「這棵樹值不值得信任」。
+//
+// stock：peRatio/pbRatio 目前由證交所/櫃買中心穩定提供；
+//   revenueGrowthYoY/analystRating 依賴 Yahoo quoteSummary，這支
+//   端點目前常被擋（見除錯記錄），先不列為必要欄位，等哪天真的穩定
+//   抓得到，或換了別的資料源，再加回來。
+// etf：目前沒有找到免費又穩定的台股 ETF 基本面/殖利率資料源
+//   （證交所的本益比清單通常不含 ETF）。與其要求一個現在拿不到的
+//   欄位、讓所有 ETF 永遠卡在 0%，不如老實承認：ETF 現在只要有
+//   股價（幾乎必定有）就算資料充足，改用修正幅度＋Blueprint缺口
+//   判斷，不強求基本面分數。
 const COMPLETENESS_FIELDS_BY_TYPE = {
-  stock: ['peRatio', 'pbRatio', 'revenueGrowthYoY', 'analystRating'],
-  etf: ['dividendYield']
+  stock: ['peRatio', 'pbRatio'],
+  etf: []
 };
 
 export function calculateCompleteness(raw, instrumentType = 'stock') {
   if (!raw) return 0;
   const fields = COMPLETENESS_FIELDS_BY_TYPE[instrumentType] || COMPLETENESS_FIELDS_BY_TYPE.stock;
+  if (fields.length === 0) return raw.price != null ? 100 : 0;
   const filled = fields.filter(key => raw[key] !== null && raw[key] !== undefined).length;
   return Math.round((filled / fields.length) * 100);
 }

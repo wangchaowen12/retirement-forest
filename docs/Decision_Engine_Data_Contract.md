@@ -1,4 +1,4 @@
-# Decision Engine Data Contract v1.3
+# Decision Engine Data Contract v1.4
 
 > 版本常數：`DATA_CONTRACT_VERSION`，定義在 `services/dataProviders/normalize.js`。
 > Engine 或 UI 需要判斷「現在系統用哪一版契約」時，讀這個常數，不要寫死字串。
@@ -10,7 +10,8 @@
 | v1.0 | 初版：定義必填/可選欄位，Provider 直接回傳扁平形狀（`tree.fundamentals.peRatio`） |
 | v1.1 | **重大改版**：加入正規化階層（`valuation` / `quality` / `risk` / `scores`），Decision Engine 從此不再直接讀任何第三方 API 欄位名稱；新增 `scores` 區塊，讓 Provider 可以直接提供複合分數（qualityScore / valuationScore / riskScore） |
 | v1.2 | 新增 `fundamentals.completeness`（0~100，取代原本二選一的「有沒有資料」），Decision Engine 的資料完整度護欄改成依 completeness 分級決定分數上限 |
-| v1.3 | 修正 `dividendYield` 從未被正規化的遺漏（新增到 `quality.dividendYield`）；completeness 改成依 `instrumentType`（個股/ETF）採用不同必要欄位，ETF 不再被要求本益比這種不適用的指標；`confidenceCap` 簡化回二段式（70% 門檻，過了不設限／沒過封頂69），拿掉會讓「文字說不推薦、畫面卻在推薦」互相矛盾的中間地帶 |
+| v1.3 | 修正 `dividendYield` 從未被正規化的遺漏；completeness 改成依 `instrumentType`（個股/ETF）採用不同必要欄位；`confidenceCap` 簡化回二段式 |
+| v1.4 | **completeness 的必要欄位改成「目前真的穩定抓得到什麼」，不是「理論上重要什麼」**——實測發現 Yahoo 的 `quoteSummary` 端點常態性被擋（`revenueGrowthYoY`／`analystRating` 幾乎永遠是 null），繼續把它們列為必要欄位，只是在懲罰資料源限制，不是真的反映這棵樹可不可信。個股改成只要求證交所/櫃買中心穩定提供的 `peRatio`／`pbRatio`；ETF 改成只要有 `price` 就算資料充足（目前沒找到免費穩定的台股 ETF 基本面來源，改用修正幅度＋Blueprint缺口判斷，不強求基本面分數） |
 
 > ⚠️ 這次改版本身也是個提醒：v1.2 的程式碼已經上線一段時間，但這份文件在被回頭檢查前一直停在 v1.1——版本號要跟著程式碼一起改，不是事後才補，不然 Data Contract 就失去「AI 判斷現在用哪一版」的意義了。
 
@@ -87,8 +88,13 @@ peAvg5y…）算出這個分數，再依三段門檻決定這棵樹今天分數�
 
 | instrumentType | 必要欄位 | 原因 |
 |---|---|---|
-| `stock`（個股） | peRatio、pbRatio、revenueGrowthYoY、analystRating | 公司財務指標 |
-| `etf` | dividendYield | ETF 沒有標準的本益比定義，該看的是殖利率——這對果樹類 ETF（0050/0056/00850）尤其重要，退休森林本來就是靠這些 ETF 的殖利率提供現金流 |
+| `stock`（個股） | peRatio、pbRatio | 目前由證交所/櫃買中心穩定提供；revenueGrowthYoY/analystRating 依賴常態性被擋的 Yahoo quoteSummary，先不列為必要 |
+| `etf` | 無（只要求 `price` 有值） | 目前沒找到免費穩定的台股 ETF 基本面/殖利率來源，改用修正幅度＋Blueprint缺口判斷 |
+
+> 這兩張清單會隨資料源穩定度調整，不是永久定案。哪天 Yahoo 的 quoteSummary
+> 恢復穩定，或找到真的能用的 ETF 殖利率來源，就把對應欄位加回必要清單，
+> 讓評分納入更多真實資訊——調整只需要改這裡的 `COMPLETENESS_FIELDS_BY_TYPE`，
+> 不用動 Decision Engine。
 
 之後如果決定「沒有 `revenueGrowthYoY` 或 `analystRating` 也該扣分」，只需要在
 `normalize.js` 的 completeness 計算邏輯裡多加一個欄位權重，不需要動 Decision Engine、
