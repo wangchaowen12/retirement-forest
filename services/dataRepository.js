@@ -23,6 +23,7 @@
 
 import { marketDataProvider } from './dataProviders/market/index.js';
 import { normalizeMarketData, calculateCompleteness } from './dataProviders/normalize.js';
+import { getSlowData, computeValuationScore } from './dataProviders/slowData.js';
 
 // ---- 人生目標（LifeGoal）----
 export async function getLifeGoal() {
@@ -96,7 +97,8 @@ const TREE_ROSTER = [
   { symbol: '009819.TW', name: '009819', area: '新主題灌木', species: '灌木', instrumentType: 'etf', marketValue: 29 },
   { symbol: 'IBIT', name: 'IBIT', area: '新主題灌木', species: '灌木', instrumentType: 'etf', marketValue: 0.9 },
   { symbol: '2049.TW', name: '上銀', area: '新主題灌木', species: '灌木', instrumentType: 'stock', marketValue: 1 },
-  { symbol: '6208.TWO', name: '日揚', area: '苗圃', species: '苗圃', instrumentType: 'stock', marketValue: 17 }
+  { symbol: '6208.TWO', name: '日揚', area: '苗圃', species: '苗圃', instrumentType: 'stock', marketValue: 17 },
+  { symbol: '8234.TW', name: '新漢', area: '苗圃', species: '苗圃', instrumentType: 'stock', marketValue: 6 } // 補上：健檢過但原始名冊漏收錄
 ];
 
 export async function getTrees(scenario = 'A') {
@@ -119,7 +121,15 @@ export async function getTrees(scenario = 'A') {
     // Provider 回傳時給的是保守預設值，這裡用正確的標準覆寫一次。
     fundamentals.completeness = calculateCompleteness(marketData, t.instrumentType);
 
-    return { ...t, fundamentals, marketData };
+    // 慢資料 × 快資料融合：錨點（半年~一年才變）+ 今天的price/PE/PB（每天變）
+    // → 即時算出 valuationScore。Decision Engine 已經寫好「有這個分數就優先
+    // 採用」的邏輯（規則K的介面設計），這裡不用動 decisionEngine.js 一行。
+    const valuationScore = computeValuationScore(t.symbol, marketData);
+    if (valuationScore != null) fundamentals.scores.valuationScore = valuationScore;
+
+    // slowData 原樣附上，供 UI／Forest Guide 需要引用「這是根據什麼健檢結論」
+    // 時使用（例如：peerGroup、notes），Decision Engine 不需要讀這個欄位。
+    return { ...t, fundamentals, marketData, slowData: getSlowData(t.symbol) };
   });
 }
 
