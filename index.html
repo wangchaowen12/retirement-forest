@@ -309,10 +309,31 @@ function App({ useForestDecision }) {
   );
 }
 
-(async () => {
-  const { useForestDecision } = await import('./hooks/useForestDecision.js');
-  ReactDOM.createRoot(document.getElementById('root')).render(<App useForestDecision={useForestDecision} />);
-})();
+window.__ForestApp = App;
+window.dispatchEvent(new Event('forest-app-ready'));
+</script>
+
+<!-- 這段刻意用原生 type="module"（不是 text/babel），Babel Standalone 完全不會碰它，
+     所以裡面的 import() 會是瀏覽器原生的 dynamic import，不會被誤轉成 Node 的 require()。
+     用 React.createElement 而不是 JSX，是因為這裡沒有 Babel 幫忙轉譯 JSX。
+     用事件而不是直接讀 window.__ForestApp，是為了不管 Babel 轉譯跟這段 module
+     script 誰先執行完，都能保證渲染時 App 元件一定已經存在。 -->
+<script type="module">
+  function getApp() {
+    return new Promise(resolve => {
+      if (window.__ForestApp) { resolve(window.__ForestApp); return; }
+      window.addEventListener('forest-app-ready', () => resolve(window.__ForestApp), { once: true });
+    });
+  }
+
+  Promise.all([
+    import('./hooks/useForestDecision.js'),
+    getApp()
+  ]).then(([{ useForestDecision }, ForestApp]) => {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+      React.createElement(ForestApp, { useForestDecision })
+    );
+  });
 </script>
 </body>
 </html>
