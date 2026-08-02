@@ -23,7 +23,7 @@
 
 import { marketDataProvider } from './dataProviders/market/index.js';
 import { normalizeMarketData, calculateCompleteness } from './dataProviders/normalize.js';
-import { getSlowData, computeValuationScore } from './dataProviders/slowData.js';
+import { getSlowData, computeValuationScore, computeQualityScore } from './dataProviders/slowData.js';
 
 // ---- 人生目標（LifeGoal）----
 export async function getLifeGoal() {
@@ -126,6 +126,11 @@ export async function getTrees(scenario = 'A') {
     // 採用」的邏輯（規則K的介面設計），這裡不用動 decisionEngine.js 一行。
     const valuationScore = computeValuationScore(t.symbol, marketData);
     if (valuationScore != null) fundamentals.scores.valuationScore = valuationScore;
+
+    // 第三方複合品質分數（例如富邦證券AI的六構面基本面評分），換算後補進
+    // qualityScore——一樣是既有介面，Decision Engine 完全不用改。
+    const qualityScore = computeQualityScore(t.symbol);
+    if (qualityScore != null) fundamentals.scores.qualityScore = qualityScore;
 
     // slowData 原樣附上，供 UI／Forest Guide 需要引用「這是根據什麼健檢結論」
     // 時使用（例如：peerGroup、notes），Decision Engine 不需要讀這個欄位。

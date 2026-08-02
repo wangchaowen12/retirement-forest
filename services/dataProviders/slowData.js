@@ -152,9 +152,10 @@ export const SLOW_DATA = {
     cheapBound: null,
     expensiveBound: null,
     transformationFlag: false,
+    thirdPartyQuality: { source: '富邦證券AI', asOf: '2026-07', score10: 8 }, // 見規則Z：跟我們自己的健檢結論有落差，已查明是權重稀釋，非評分錯誤
     lastReviewed: '2026-07',
     nextReviewDue: '2026-10',
-    notes: '累計營收年增率至5月仍為-3.13%，單月數字大起大落(-26%~+30%)。連專業估值工具都表示無法判斷合理股價。苗圃四項止穩檢查0項通過，規則T的反例對照組(BPS穩定但其餘三項不通過)。'
+    notes: '累計營收年增率至5月仍為-3.13%，單月數字大起大落(-26%~+30%)。連專業估值工具都表示無法判斷合理股價。苗圃四項止穩檢查0項通過，規則T的反例對照組(BPS穩定但其餘三項不通過)。⚠️富邦AI基本面給8分(見規則Z)：其六構面權重下成長性只佔20%，我們的健檢集中火力在這一項，兩者不衝突，但提醒我們健檢範圍該補齊現金流/營運效率/公司治理三個構面。'
   },
   '0050.TW': { // 0050
     analysisCategory: 'etf',
@@ -221,4 +222,22 @@ export function computeValuationScore(symbol, marketData) {
 
 export function getSlowData(symbol) {
   return SLOW_DATA[symbol] || null;
+}
+
+/**
+ * 把第三方（例如富邦證券AI）提供的複合品質分數，換算成我們的 0-100 刻度。
+ * 目前只支援 score10（10分制）換算，未來如果有別的來源用別的刻度，
+ * 在這裡加一種換算方式即可，Decision Engine 完全不用改。
+ *
+ * 這是「不覆蓋，只補位」的設計——只有在我們自己還沒做過深度健檢
+ * （valuationMethod 是 'pending' 或完全沒有 entry）的股票，才適合把
+ * 第三方分數當「暫時的起點」餵進去；已經深度健檢過的股票（例如日揚），
+ * 第三方分數只放在 thirdPartyQuality 供對照，不會自動覆蓋我們自己的結論。
+ */
+export function computeQualityScore(symbol) {
+  const slow = SLOW_DATA[symbol];
+  if (!slow?.thirdPartyQuality) return null;
+  const { score10 } = slow.thirdPartyQuality;
+  if (typeof score10 !== 'number') return null;
+  return Math.round(score10 * 10); // 10分制 → 100分制
 }
